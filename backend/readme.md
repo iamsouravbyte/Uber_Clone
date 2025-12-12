@@ -1,0 +1,105 @@
+# `POST /users/register`
+
+## Description
+
+Register a new user. The endpoint validates input, hashes the password, creates the user in the database, and returns a JWT auth token and the created user (password excluded).
+
+- Method: `POST`
+- URL: `/users/register`
+- Headers: `Content-Type: application/json`
+
+## Request Body
+
+JSON object with the following fields:
+
+- `fullname` (object)
+  - `firstname` (string, required) — minimum length 3
+  - `lastname` (string, optional) — minimum length 3 if provided
+- `email` (string, required) — must be a valid email
+- `password` (string, required) — minimum length 6
+
+Example:
+
+```json
+{
+  "fullname": {
+    "firstname": "Jane",
+    "lastname": "Doe"
+  },
+  "email": "jane@example.com",
+  "password": "secret123"
+}
+```
+
+## Validation Rules (express-validator)
+
+- `body("email").isEmail()` — returns 400 if invalid email
+- `body("fullname.firstname").isLength({ min: 3 })` — returns 400 if firstname shorter than 3
+- `body("password").isLength({ min: 6 })` — returns 400 if password shorter than 6
+
+If validation fails, the response is `400 Bad Request` with a JSON body containing the errors array.
+
+## Responses
+
+- `201 Created`
+
+  - Body: `{ "token": "<jwt>", "user": { ... } }`
+  - Note: The user object does not include the password (password is saved hashed and returned with `select: false`).
+
+  ## Example Successful Response
+
+  Example body returned on `201 Created` (password omitted):
+
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJf...",
+    "user": {
+      "_id": "64b8f1a2e6c8b1f0a1d2c3e4",
+      "fullname": {
+        "firstname": "Jane",
+        "lastname": "Doe"
+      },
+      "email": "jane@example.com",
+      "sockedId": null
+    }
+  }
+  ```
+
+- `400 Bad Request`
+  - Body example (validation errors):
+
+```json
+{
+  "errors": [
+    {
+      "value": "bad-email",
+      "msg": "Invalid Email",
+      "param": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+- `500 Internal Server Error`
+  - Body: `{ "error": "<message>" }` (on unexpected server/database errors)
+
+## Behavior & Implementation Notes
+
+- Passwords are hashed using `bcrypt` before being stored: `userModel.hashPassword(password)`.
+- The created user model calls `user.generateAuthToken()` to produce the JWT. The token uses `process.env.JWT_SECRET`.
+- The `email` field is unique in the database — attempting to register an existing email will raise a database error (usually a 500 unless explicitly handled).
+
+## Example cURL
+
+```bash
+curl -X POST http://localhost:3000/users/register \
+  -H "Content-Type: application/json" \
+  -d '{"fullname":{"firstname":"Jane","lastname":"Doe"},"email":"jane@example.com","password":"secret123"}'
+```
+
+## File Location
+
+This documentation is in `backend/readme.md`.
+
+---
