@@ -196,3 +196,81 @@ If validation fails, the response is `400 Bad Request` with a JSON body containi
 - Passwords are compared using `bcrypt`: `user.comparePassword(password)`.
 - On successful authentication the code calls `user.generateAuthToken()` to produce a JWT. The token uses `process.env.JWT_SECRET`.
 - If the email is not found or the password doesn't match, return `401 Unauthorized` rather than `200`.
+
+---
+
+# `GET /users/profile`
+
+## Description
+
+Retrieve the authenticated user's profile information.
+
+- Method: `GET`
+- URL: `/users/profile`
+- Headers: `Authorization: Bearer <token>`
+
+## Request
+
+No request body is required. The endpoint relies on the `Authorization` header to authenticate the user.
+
+## Responses
+
+- `200 OK`
+
+  - Body: `{ "user": { ... } }`
+  - Example:
+
+  ```json
+  {
+    "user": {
+      "_id": "64b8f1a2e6c8b1f0a1d2c3e4",
+      "fullname": {
+        "firstname": "Jane",
+        "lastname": "Doe"
+      },
+      "email": "jane@example.com",
+      "sockedId": null
+    }
+  }
+  ```
+
+- `401 Unauthorized`
+
+  - Body: `{ "error": "Unauthorized" }` (if the token is missing or invalid)
+
+- `500 Internal Server Error`
+  - Body: `{ "error": "<message>" }` (on unexpected server/database errors)
+
+---
+
+# `GET /users/logout`
+
+## Description
+
+Log out the authenticated user by clearing the token and blacklisting it.
+
+- Method: `GET`
+- URL: `/users/logout`
+- Headers: `Authorization: Bearer <token>`
+
+## Request
+
+No request body is required. The endpoint relies on the `Authorization` header to authenticate the user.
+
+## Responses
+
+- `200 OK`
+
+  - Body: `{ "message": "Logged out successfully" }`
+
+- `401 Unauthorized`
+
+  - Body: `{ "error": "Unauthorized" }` (if the token is missing or invalid)
+
+- `500 Internal Server Error`
+  - Body: `{ "error": "<message>" }` (on unexpected server/database errors)
+
+## Behavior & Implementation Notes
+
+- The token is cleared from the user's cookies and added to a blacklist to prevent reuse.
+- The `Authorization` header or cookie must contain a valid token for the logout to succeed.
