@@ -103,3 +103,96 @@ curl -X POST http://localhost:3000/users/register \
 This documentation is in `backend/readme.md`.
 
 ---
+
+# `POST /users/login`
+
+## Description
+
+Authenticate an existing user and return a JWT auth token and the user object (password excluded).
+
+- Method: `POST`
+- URL: `/users/login`
+- Headers: `Content-Type: application/json`
+
+## Request Body
+
+JSON object with the following fields:
+
+- `email` (string, required) — must be a valid email
+- `password` (string, required) — minimum length 6
+
+Example:
+
+```json
+{
+  "email": "jane@example.com",
+  "password": "secret123"
+}
+```
+
+## Validation Rules (express-validator)
+
+- `body("email").isEmail()` — returns 400 if invalid email
+- `body("password").isLength({ min: 6 })` — returns 400 if password shorter than 6
+
+If validation fails, the response is `400 Bad Request` with a JSON body containing the errors array.
+
+## Responses
+
+- `200 OK`
+
+  - Body: `{ "token": "<jwt>", "user": { ... } }`
+  - Note: The user object does not include the password (password is stored hashed and is not returned).
+
+  ## Example Successful Response
+
+  Example body returned on `200 OK` (password omitted):
+
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJf...",
+    "user": {
+      "_id": "64b8f1a2e6c8b1f0a1d2c3e4",
+      "fullname": {
+        "firstname": "Jane",
+        "lastname": "Doe"
+      },
+      "email": "jane@example.com",
+      "sockedId": null
+    }
+  }
+  ```
+
+- `400 Bad Request`
+  - Body example (validation errors):
+
+```json
+{
+  "errors": [
+    {
+      "value": "bad-email",
+      "msg": "Invalid Email",
+      "param": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+- `401 Unauthorized`
+  - Body example (invalid credentials):
+
+```json
+{
+  "error": "Invalid email or password"
+}
+```
+
+- `500 Internal Server Error`
+  - Body: `{ "error": "<message>" }` (on unexpected server/database errors)
+
+## Behavior & Implementation Notes
+
+- Passwords are compared using `bcrypt`: `user.comparePassword(password)`.
+- On successful authentication the code calls `user.generateAuthToken()` to produce a JWT. The token uses `process.env.JWT_SECRET`.
+- If the email is not found or the password doesn't match, return `401 Unauthorized` rather than `200`.
